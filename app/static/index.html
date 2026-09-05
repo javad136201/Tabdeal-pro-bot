@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fa" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tabdeal Pro Bot</title>
+<style>
+body{margin:0;background:#0d1117;color:#e6edf3;font-family:Arial,sans-serif}
+.wrap{max-width:900px;margin:auto;padding:16px}.card{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:16px;margin:12px 0}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.metric{background:#0d1117;padding:14px;border-radius:12px}
+.big{font-size:28px;font-weight:bold}.buy{color:#3fb950}.sell{color:#f85149}.wait{color:#d29922}
+button,select{width:100%;padding:13px;margin-top:8px;border-radius:10px;border:1px solid #30363d;background:#21262d;color:#fff}
+@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
+</style></head><body><div class="wrap">
+<h2>🤖 Tabdeal Pro Bot</h2>
+<div class="card"><div>حالت فعلی</div><div id="mode" class="big">DEMO</div>
+<select id="modeSelect"><option>BACKTEST</option><option>DEMO</option><option>LIVE</option></select>
+<button onclick="setMode()">تغییر حالت</button></div>
+<div class="card"><div>سیگنال</div><div id="signal" class="big wait">WAIT</div>
+<div class="grid"><div class="metric">قیمت<br><b id="price">-</b></div><div class="metric">RSI<br><b id="rsi">-</b></div>
+<div class="metric">EMA20<br><b id="ema20">-</b></div><div class="metric">EMA50<br><b id="ema50">-</b></div></div></div>
+<div class="card"><button onclick="post('/api/start')">▶ شروع</button>
+<button onclick="post('/api/stop')">⏸ توقف</button><button onclick="post('/api/emergency-stop')">🛑 توقف اضطراری</button></div>
+<div class="card"><b>وضعیت</b><p id="status">در حال دریافت...</p></div>
+</div>
+<script>
+async function get(){let r=await fetch('/api/status');let s=await r.json();
+document.getElementById('mode').textContent=s.mode; document.getElementById('signal').textContent=s.signal;
+document.getElementById('signal').className='big '+(s.signal==='BUY'?'buy':s.signal==='SELL'?'sell':'wait');
+for(let k of ['price','rsi','ema20','ema50']) document.getElementById(k).textContent=s[k]??'-';
+document.getElementById('status').textContent=s.running?'ربات فعال است':'ربات متوقف است';}
+async function post(u){await fetch(u,{method:'POST'});get()} async function setMode(){let m=document.getElementById('modeSelect').value;await fetch('/api/mode/'+m,{method:'POST'});get()}
+get();setInterval(get,5000);
+</script></body></html>
