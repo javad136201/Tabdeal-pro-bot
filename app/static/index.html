@@ -1,1 +1,66 @@
-<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tabdeal Pro</title><style>body{font-family:Tahoma;background:#10151d;color:white;padding:16px}.card{max-width:650px;margin:auto;background:#1b2430;border-radius:18px;padding:20px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.item{background:#263140;padding:14px;border-radius:12px}.v{font-size:20px;margin-top:6px}</style></head><body><div class="card"><h2>Tabdeal Pro Bot v1.2.1</h2><div id="st">در حال اتصال...</div><div class="grid"><div class="item">بازار<div class="v" id="sy">-</div></div><div class="item">حالت<div class="v" id="mo">-</div></div><div class="item">سیگنال<div class="v" id="sg">-</div></div><div class="item">اعتماد<div class="v" id="co">-</div></div><div class="item">قیمت<div class="v" id="pr">-</div></div><div class="item">RSI<div class="v" id="rs">-</div></div></div><p id="re"></p></div><script>async function load(){try{let s=await fetch('/api/status').then(r=>r.json()),a=await fetch('/api/analysis').then(r=>r.json());sy.textContent=s.symbol;mo.textContent=s.mode;sg.textContent=a.signal||'-';co.textContent=(a.confidence??0)+'%';pr.textContent=a.price??'-';rs.textContent=a.rsi??'-';re.textContent='دلایل: '+(a.reason||'-')+(a.error?' | خطا: '+a.error:'');st.textContent='● متصل | نسخه '+s.version}catch(e){st.textContent='● خطا در اتصال'}}load();setInterval(load,10000)</script></body></html>
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tabdeal Pro v1.3</title>
+<style>
+body{font-family:Arial,sans-serif;background:#10141b;color:#eee;margin:0;padding:16px}
+.wrap{max-width:900px;margin:auto}.card{background:#1a2029;border-radius:14px;padding:16px;margin-bottom:12px}
+h1{margin:0 0 6px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.item{background:#222a35;padding:12px;border-radius:10px}.big{font-size:28px;font-weight:bold}
+button{padding:11px 15px;border:0;border-radius:9px;margin:4px;cursor:pointer}
+#signal{font-size:34px;font-weight:bold}
+small{color:#aeb7c4}
+pre{white-space:pre-wrap;word-break:break-word}
+@media(max-width:600px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="card"><h1>Tabdeal Pro v1.3</h1><small>DEMO فقط — هیچ سفارش واقعی ارسال نمی‌شود.</small></div>
+<div class="card">
+  <div>سیگنال: <span id="signal">...</span></div>
+  <div class="grid">
+    <div class="item">قیمت<div class="big" id="price">-</div></div>
+    <div class="item">اعتماد<div class="big" id="confidence">-</div></div>
+    <div class="item">RSI<div class="big" id="rsi">-</div></div>
+    <div class="item">EMA20 / EMA50<div id="emas">-</div></div>
+  </div>
+</div>
+<div class="card">
+  <button onclick="tick()">اجرای یک تیک Demo</button>
+  <button onclick="resetDemo()">Reset Demo</button>
+</div>
+<div class="card"><h3>حساب Demo</h3><pre id="demo">در حال دریافت...</pre></div>
+<div class="card"><h3>Backtest فعلی</h3><pre id="bt">در حال دریافت...</pre></div>
+</div>
+<script>
+async function load(){
+  const a=await fetch('/api/analysis').then(r=>r.json());
+  document.getElementById('signal').textContent=a.signal||'HOLD';
+  document.getElementById('confidence').textContent=(a.confidence??'-')+'%';
+  document.getElementById('price').textContent=a.price??'-';
+  document.getElementById('rsi').textContent=a.rsi??'-';
+  document.getElementById('emas').textContent=(a.ema20??'-')+' / '+(a.ema50??'-');
+  const d=await fetch('/api/demo/state').then(r=>r.json());
+  document.getElementById('demo').textContent=JSON.stringify(d,null,2);
+}
+async function tick(){
+  const x=await fetch('/api/demo/tick',{method:'POST'}).then(r=>r.json());
+  document.getElementById('demo').textContent=JSON.stringify(x.demo||x,null,2);
+  load();
+}
+async function resetDemo(){
+  await fetch('/api/demo/reset',{method:'POST'});
+  load();
+}
+async function backtest(){
+  const x=await fetch('/api/backtest').then(r=>r.json());
+  document.getElementById('bt').textContent=JSON.stringify(x,null,2);
+}
+load(); backtest();
+setInterval(load,10000);
+</script>
+</body>
+</html>
