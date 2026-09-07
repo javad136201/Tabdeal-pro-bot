@@ -2,44 +2,69 @@
 import pandas as pd
 
 def normalize_trades(raw):
-    if isinstance(raw,dict):
-        for k in ('data','results','trades'):
-            if isinstance(raw.get(k),list): raw=raw[k]; break
-        else: raw=[raw]
-    if not isinstance(raw,list): return []
-    out=[]
+    if isinstance(raw, dict):
+        for key in ("data", "results", "trades"):
+            if isinstance(raw.get(key), list):
+                raw = raw[key]
+                break
+        else:
+            raw = [raw]
+    if not isinstance(raw, list):
+        return []
+    out = []
     for t in raw:
-        if not isinstance(t,dict): continue
+        if not isinstance(t, dict):
+            continue
         try:
-            p=float(t.get('price',t.get('p'))); q=float(t.get('qty',t.get('quantity',t.get('q'))))
-            ts=int(float(t.get('time',t.get('timestamp',t.get('T',t.get('E'))))))
-            if p>0 and q>0: out.append({'time':ts,'price':p,'qty':q})
-        except Exception: continue
+            price = float(t.get("price", t.get("p")))
+            qty = float(t.get("qty", t.get("quantity", t.get("q"))))
+            ts = int(float(t.get("time", t.get("timestamp", t.get("T", t.get("E"))))))
+            if price > 0 and qty > 0:
+                out.append({"time": ts, "price": price, "qty": qty})
+        except Exception:
+            pass
     return out
 
-def trades_to_candles(raw,rule='1min'):
-    x=normalize_trades(raw)
-    if not x:return pd.DataFrame(columns=['open','high','low','close','volume'])
-    d=pd.DataFrame(x); d['dt']=pd.to_datetime(d.time,unit='ms',utc=True); d=d.sort_values('dt').set_index('dt')
-    return d.resample(rule).agg(open=('price','first'),high=('price','max'),low=('price','min'),close=('price','last'),volume=('qty','sum')).dropna()
+def trades_to_candles(raw, rule="1min"):
+    trades = normalize_trades(raw)
+    if not trades:
+        return pd.DataFrame(columns=["open","high","low","close","volume"])
+    df = pd.DataFrame(trades)
+    df["dt"] = pd.to_datetime(df["time"], unit="ms", utc=True)
+    df = df.sort_values("dt").set_index("dt")
+    return df.resample(rule).agg(
+        open=("price","first"),
+        high=("price","max"),
+        low=("price","min"),
+        close=("price","last"),
+        volume=("qty","sum")
+    ).dropna()
 
-def normalize_ohlcv_csv(df):
-    cols={c.lower().strip():c for c in df.columns}
+def normalize_ohlcv_csv(content: bytes):
+    from io import BytesIO
+    df = pd.read_csv(BytesIO(content))
+    cols = {str(c).strip().lower(): c for c in df.columns}
     def pick(*names):
         for n in names:
-            if n in cols:return cols[n]
+            if n in cols:
+                return cols[n]
         return None
-    mapping={k:pick(k,*alts) for k,alts in {'timestamp':['time','date','datetime'],'open':[],'high':[],'low':[],'close':[],'volume':['vol']}.items()}
-    req=['open','high','low','close']
-    if not all(mapping[k] for k in req): raise ValueError('CSV columns must include open, high, low, close')
-    out=df.rename(columns={v:k for k,v in mapping.items() if v}).copy()
-    if 'timestamp' in out:
-        ts=out['timestamp']
-        if pd.api.types.is_numeric_dtype(ts):
-            unit='ms' if float(ts.dropna().iloc[0])>1e11 else 's'
-            out.index=pd.to_datetime(ts,unit=unit,utc=True)
-        else: out.index=pd.to_datetime(ts,utc=True)
-    else: out.index=pd.RangeIndex(len(out))
-    out['volume']=out['volume'].astype(float) if 'volume' in out else 1.0
-    for c in ['open','high','low','close','volume']: out[c]=pd.to_numeric(out[c],errors='coerce')
-    return out[['open','high','low','close','volume']].dropna().sort_index()
+    ts = pick("timestamp","time","datetime","date")
+    o, h, l, c, v = [pick(x) for x in ("open","high","low","close","volume")]
+    if not all([o,h,l,c]):
+        raise ValueError("CSV باید ستون‌های Open, High, Low, Close و ترجیحاً Volume داشته باشد.")
+    out = pd.DataFrame({
+        "open": pd.to_numeric(df[o], errors="coerce"),
+        "high": pd.to_numeric(df[h], errors="coerce"),
+        "low": pd.to_numeric(df[l], errors="coerce"),
+        "close": pd.to_numeric(df[c], errors="coerce"),
+        "volume": pd.to_numeric(df[v], errors="coerce") if v else 0.0,
+    })
+    if ts:
+        parsed = pd.to_datetime(df[ts], errors="coerce", utc=True)
+        out.index = parsed
+        out = out[~out.index.isna()].sort_index()
+    out = out.dropna(subset=["open","high","low","close"])
+    if len(out) < 60:
+        raise ValueError("حداقل ۶۰ کندل برای بک‌تست لازم است.")
+    return out

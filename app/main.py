@@ -1,97 +1,79 @@
 
-from fastapi import FastAPI,UploadFile,File,HTTPException,Response,Cookie
+from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
-from pydantic import BaseModel,Field
-import pandas as pd, time
 from .config import settings
 from .tabdeal import recent_trades
-from .data import trades_to_candles,normalize_ohlcv_csv
+from .data import trades_to_candles, normalize_ohlcv_csv
 from .strategy import analyze
-from .paper import PaperEngine
-from .backtest import run
-from .forward import ForwardTester
-from . import live
-import hmac,hashlib,secrets
-app=FastAPI(title='Tabdeal Pro',version='3.0.0')
-paper=PaperEngine(settings.demo_start_quote,settings.demo_trade_quote,settings.fee_rate,settings.tp_pct,settings.sl_pct,settings.trailing_pct)
+from .trader import PaperTrader
+from .backtest import run_backtest
+from .forward import ForwardRunner
 
-def market_raw():return recent_trades(settings.symbol,settings.market_limit)
-def analysis_now():return analyze(trades_to_candles(market_raw()))
-forward=ForwardTester(market_raw,lambda raw:analyze(trades_to_candles(raw)),settings.poll_seconds)
+app=FastAPI(title="Tabdeal Pro",version="3.1.0")
 
-def session_ok(cookie):
-    if not settings.dashboard_password:return False
-    if not cookie:return False
-    token,sep,sig=cookie.partition('.');
-    expected=hmac.new(settings.dashboard_password.encode(),token.encode(),hashlib.sha256).hexdigest()
-    return sep=='.' and hmac.compare_digest(sig,expected)
+def market_analysis():
+    raw=recent_trades(settings.symbol,settings.market_limit)
+    return analyze(trades_to_candles(raw),settings.min_confidence)
 
-def require_session(cookie):
-    if not session_ok(cookie):raise HTTPException(401,'برای عملیات واقعی ابتدا وارد پنل شوید.')
+demo=PaperTrader("DEMO",settings.demo_start_quote,settings.order_quote,settings.fee_rate,settings.tp_pct,settings.sl_pct,settings.trailing_pct,settings.cooldown_sec,settings.max_daily_loss_pct)
+forward=PaperTrader("FORWARD",settings.demo_start_quote,settings.order_quote,settings.fee_rate,settings.tp_pct,settings.sl_pct,settings.trailing_pct,settings.cooldown_sec,settings.max_daily_loss_pct)
+runner=ForwardRunner(market_analysis,forward,settings.forward_interval_sec)
 
-class Login(BaseModel): password:str
-class Risk(BaseModel): tp:float=Field(ge=0,le=100);sl:float=Field(ge=0,le=100);trailing:float=Field(ge=0,le=50)
-class Amount(BaseModel): quote:float=Field(gt=0,le=100000000)
-
-@app.get('/')
-def root():return FileResponse('app/static/index.html')
-@app.get('/health')
-def health():return {'ok':True,'version':'3.0.0'}
-@app.get('/api/status')
-def status():return {'mode':settings.mode,'symbol':settings.symbol,'version':'3.0.0','demo_enabled':settings.demo_enabled,'forward_enabled':settings.forward_enabled,'live_enabled':settings.live_enabled}
-@app.post('/api/login')
-def login(body:Login,response:Response):
-    if not settings.dashboard_password or not secrets.compare_digest(body.password,settings.dashboard_password):raise HTTPException(401,'رمز نادرست است.')
-    token=secrets.token_urlsafe(24);sig=hmac.new(settings.dashboard_password.encode(),token.encode(),hashlib.sha256).hexdigest();response.set_cookie('tp_session',token+'.'+sig,httponly=True,samesite='lax',secure=False,max_age=86400)
-    return {'ok':True}
-@app.post('/api/logout')
-def logout(response:Response):response.delete_cookie('tp_session');return {'ok':True}
-@app.get('/api/analysis')
+@app.get("/")
+def root(): return FileResponse("app/static/index.html")
+@app.get("/health")
+def health(): return {"ok":True,"version":"3.1.0"}
+@app.get("/api/status")
+def status():
+    return {"version":"3.1.0","symbol":settings.symbol,"mode":settings.mode,"live_enabled":settings.live_enabled,"live_locked":True}
+@app.get("/api/analysis")
 def analysis():
-    try:return analysis_now()
-    except Exception as e:return {'signal':'HOLD','confidence':0,'error':str(e)}
-@app.get('/api/demo/state')
-def demo_state():return paper.snapshot()
-@app.post('/api/demo/config')
-def demo_config(r:Risk):return paper.configure(r.tp,r.sl,r.trailing)
-@app.post('/api/demo/tick')
-def demo_tick():return {'ok':True,'analysis':analysis_now(),'demo':paper.process(analysis_now())}
-@app.post('/api/demo/manual-close')
-def demo_close():return paper.manual_close()
-@app.post('/api/demo/reset')
-def demo_reset():return paper.reset()
-@app.post('/api/forward/start')
-def forward_start():forward.start();return forward.snapshot()
-@app.post('/api/forward/stop')
-def forward_stop():forward.stop();return forward.snapshot()
-@app.post('/api/forward/tick')
-def forward_tick():return forward.tick()
-@app.post('/api/forward/reset')
-def forward_reset():forward.stop();forward.reset();return forward.snapshot()
-@app.get('/api/forward/state')
-def forward_state():return forward.snapshot()
-@app.post('/api/backtest/csv')
-async def backtest_csv(file:UploadFile=File(...)):
-    if not file.filename.lower().endswith('.csv'):raise HTTPException(400,'فقط CSV پذیرفته می‌شود.')
-    data=await file.read()
+    try: return market_analysis()
+    except Exception as e: return {"signal":"HOLD","confidence":0,"error":str(e)}
+
+@app.get("/api/demo/state")
+def demo_state(): return demo.snapshot()
+@app.post("/api/demo/tick")
+def demo_tick(): 
+    a=market_analysis(); return {"ok":True,"analysis":a,"state":demo.tick(a)}
+@app.post("/api/demo/manual-close")
+def demo_close(): return demo.manual_close()
+@app.post("/api/demo/reset")
+def demo_reset(): demo.reset(); return demo.snapshot()
+@app.post("/api/demo/settings")
+def demo_settings(payload:dict): return demo.update_settings(**{k:payload.get(k) for k in ("order_quote","tp_pct","sl_pct","trailing_pct","cooldown_sec","max_daily_loss_pct") if k in payload})
+
+@app.get("/api/forward/state")
+def forward_state(): return {"runner":runner.status(),"state":forward.snapshot()}
+@app.post("/api/forward/tick")
+def forward_tick(): return {"ok":True,"result":runner.tick()}
+@app.post("/api/forward/start")
+def forward_start(): runner.start(); return runner.status()
+@app.post("/api/forward/stop")
+def forward_stop(): runner.stop(); return runner.status()
+@app.post("/api/forward/manual-close")
+def forward_close(): return forward.manual_close()
+@app.post("/api/forward/reset")
+def forward_reset(): runner.stop(); forward.reset(); return forward.snapshot()
+@app.post("/api/forward/settings")
+def forward_settings(payload:dict): return forward.update_settings(**{k:payload.get(k) for k in ("order_quote","tp_pct","sl_pct","trailing_pct","cooldown_sec","max_daily_loss_pct") if k in payload})
+
+@app.get("/api/backtest/recent")
+def backtest_recent():
     try:
-        import io
-        df=pd.read_csv(io.BytesIO(data));candles=normalize_ohlcv_csv(df);return run(candles,settings.demo_start_quote,settings.fee_rate,paper.tp,paper.sl)
-    except Exception as e:raise HTTPException(400,str(e))
-@app.get('/api/backtest/current')
-def backtest_current():return run(trades_to_candles(market_raw()),settings.demo_start_quote,settings.fee_rate,paper.tp,paper.sl)
-@app.get('/api/live/preflight')
-def preflight(cookie=Cookie(default=None,alias='tp_session')):
-    require_session(cookie);return live.preflight()
-@app.post('/api/live/buy')
-def live_buy(body:Amount,cookie=Cookie(default=None,alias='tp_session')):
-    require_session(cookie)
-    if not settings.live_enabled:raise HTTPException(403,'Live trading قفل است. LIVE_TRADING_ENABLED را فعال کنید.')
+        raw=recent_trades(settings.symbol,settings.market_limit)
+        candles=trades_to_candles(raw)
+        return run_backtest(candles,settings.demo_start_quote,settings.order_quote,settings.fee_rate,settings.tp_pct,settings.sl_pct,settings.trailing_pct,settings.min_confidence)
+    except Exception as e: return {"ok":False,"error":str(e)}
+
+@app.post("/api/backtest/upload")
+async def backtest_upload(file:UploadFile=File(...)):
     try:
-        result=live.market_buy(settings.symbol,body.quote);return {'ok':True,'order':result}
-    except Exception as e:raise HTTPException(400,str(e))
-@app.post('/api/live/sell-all')
-def live_sell(cookie=Cookie(default=None,alias='tp_session')):
-    require_session(cookie)
-    try:return {'ok':True,'order':live.market_sell_all(settings.symbol)}
-    except Exception as e:raise HTTPException(400,str(e))
+        content=await file.read()
+        candles=normalize_ohlcv_csv(content)
+        return run_backtest(candles,settings.demo_start_quote,settings.order_quote,settings.fee_rate,settings.tp_pct,settings.sl_pct,settings.trailing_pct,settings.min_confidence)
+    except Exception as e: return {"ok":False,"error":str(e)}
+
+@app.get("/api/live/preflight")
+def live_preflight():
+    return {"ok":False,"locked":True,"message":"معاملات واقعی هنوز قفل هستند. ابتدا Demo و Forward Test باید کامل اعتبارسنجی شوند."}
