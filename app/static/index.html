@@ -1,66 +1,48 @@
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tabdeal Pro v1.3</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tabdeal Pro | داشبورد معامله</title>
 <style>
-body{font-family:Arial,sans-serif;background:#10141b;color:#eee;margin:0;padding:16px}
-.wrap{max-width:900px;margin:auto}.card{background:#1a2029;border-radius:14px;padding:16px;margin-bottom:12px}
-h1{margin:0 0 6px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.item{background:#222a35;padding:12px;border-radius:10px}.big{font-size:28px;font-weight:bold}
-button{padding:11px 15px;border:0;border-radius:9px;margin:4px;cursor:pointer}
-#signal{font-size:34px;font-weight:bold}
-small{color:#aeb7c4}
-pre{white-space:pre-wrap;word-break:break-word}
-@media(max-width:600px){.grid{grid-template-columns:1fr}}
+:root{--bg:#0b1020;--panel:#151d31;--panel2:#1c2740;--text:#f4f7fb;--muted:#9da9bf;--line:#2a3855;--green:#35d39b;--red:#ff6678;--gold:#ffc857;--blue:#56a8ff;--shadow:0 18px 45px rgba(0,0,0,.24)}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#142038 0,#0b1020 45%);color:var(--text);font-family:Tahoma,Arial,sans-serif}.wrap{max-width:1100px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.brand h1{font-size:23px;margin:0 0 5px}.brand small{color:var(--muted)}.mode{padding:10px 14px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:13px}.mode b{margin-right:5px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.grid2{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}.card{background:linear-gradient(180deg,rgba(28,39,64,.94),rgba(21,29,49,.94));border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);margin-bottom:12px}.metric span{color:var(--muted);font-size:12px}.metric strong{display:block;font-size:23px;margin-top:6px}.hero{display:flex;justify-content:space-between;gap:15px;align-items:center}.signal{font-size:38px;font-weight:800}.buy{color:var(--green)}.sell{color:var(--red)}.hold{color:var(--gold)}.sub{color:var(--muted);font-size:12px}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.input{display:flex;flex-direction:column;gap:6px;flex:1;min-width:145px}.input label{font-size:12px;color:var(--muted)}input{width:100%;background:#0f1628;border:1px solid var(--line);color:var(--text);border-radius:11px;padding:11px;font-size:15px}button{border:0;border-radius:12px;padding:12px 15px;font-family:inherit;font-size:14px;cursor:pointer;transition:.15s;box-shadow:none}button:hover{transform:translateY(-1px)}.primary{background:var(--blue);color:#08101f}.green{background:var(--green);color:#07150f}.red{background:var(--red);color:#21060b}.gold{background:var(--gold);color:#1e1500}.dark{background:#0e1525;color:#e8edf7;border:1px solid var(--line)}.warn{background:#3a2a08;color:#ffe4a3}.kv{display:grid;grid-template-columns:1fr 1fr;gap:9px}.kv div{background:#0f1728;border:1px solid var(--line);padding:11px;border-radius:12px}.kv span{display:block;color:var(--muted);font-size:11px;margin-bottom:4px}.tp{color:var(--green)}.sl{color:var(--red)}.table{width:100%;border-collapse:collapse;font-size:12px}.table th,.table td{padding:10px;border-bottom:1px solid var(--line);text-align:right}.toast{position:fixed;left:18px;bottom:18px;background:#111827;border:1px solid var(--line);padding:12px 14px;border-radius:12px;display:none;max-width:360px}.footer{color:var(--muted);font-size:11px;text-align:center;padding:4px 0 18px}@media(max-width:820px){.grid{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.hero{align-items:flex-start;flex-direction:column}}@media(max-width:520px){.wrap{padding:10px}.grid{grid-template-columns:1fr 1fr}.metric strong{font-size:20px}.signal{font-size:32px}button{width:100%}.row .input{min-width:100%}.row{display:grid;grid-template-columns:1fr}}
 </style>
 </head>
-<body>
-<div class="wrap">
-<div class="card"><h1>Tabdeal Pro v1.3</h1><small>DEMO فقط — هیچ سفارش واقعی ارسال نمی‌شود.</small></div>
-<div class="card">
-  <div>سیگنال: <span id="signal">...</span></div>
-  <div class="grid">
-    <div class="item">قیمت<div class="big" id="price">-</div></div>
-    <div class="item">اعتماد<div class="big" id="confidence">-</div></div>
-    <div class="item">RSI<div class="big" id="rsi">-</div></div>
-    <div class="item">EMA20 / EMA50<div id="emas">-</div></div>
-  </div>
+<body><div class="wrap">
+<div class="top"><div class="brand"><h1>Tabdeal Pro</h1><small>داشبورد حرفه‌ای معاملات — کنترل کامل و ساده</small></div><div class="mode">حالت: <b id="mode">...</b></div></div>
+<div class="card"><div class="hero"><div><div class="sub">سیگنال فعلی</div><div id="signal" class="signal hold">HOLD</div><div id="reason" class="sub">در حال دریافت اطلاعات...</div></div><div class="row"><button class="primary" onclick="tick()">اجرای Demo</button><button class="dark" onclick="refreshAll()">به‌روزرسانی</button></div></div></div>
+<div class="grid">
+<div class="card metric"><span>قیمت فعلی</span><strong id="price">-</strong></div>
+<div class="card metric"><span>اعتماد سیگنال</span><strong id="confidence">-</strong></div>
+<div class="card metric"><span>RSI</span><strong id="rsi">-</strong></div>
+<div class="card metric"><span>EMA20 / EMA50</span><strong id="emas">-</strong></div>
 </div>
-<div class="card">
-  <button onclick="tick()">اجرای یک تیک Demo</button>
-  <button onclick="resetDemo()">Reset Demo</button>
-</div>
-<div class="card"><h3>حساب Demo</h3><pre id="demo">در حال دریافت...</pre></div>
-<div class="card"><h3>Backtest فعلی</h3><pre id="bt">در حال دریافت...</pre></div>
-</div>
+<div class="grid2"><div class="card"><h3>وضعیت معامله</h3><div class="kv"><div><span>وضعیت</span><b id="position">FLAT</b></div><div><span>سرمایه کل</span><b id="equity">-</b></div><div><span>موجودی ریالی/تتری</span><b id="quote">-</b></div><div><span>مقدار دارایی</span><b id="base">-</b></div><div><span>قیمت ورود</span><b id="entry">-</b></div><div><span>سود/زیان کل</span><b id="pnl">-</b></div></div></div>
+<div class="card"><h3>حد سود و حد ضرر</h3><div class="kv"><div><span>حد سود</span><b class="tp" id="tp">-</b></div><div><span>حد ضرر</span><b class="sl" id="sl">-</b></div></div><div class="row" style="margin-top:12px"><div class="input"><label>حد سود (%)</label><input id="tpPct" type="number" min="0" step="0.1" value="2"></div><div class="input"><label>حد ضرر (%)</label><input id="slPct" type="number" min="0" step="0.1" value="1"></div></div><div class="row" style="margin-top:10px"><button class="gold" onclick="saveRisk()">ذخیره حدها</button></div></div></div>
+<div class="card"><h3>کنترل معامله</h3><div class="row"><button class="green" onclick="tick()">ورود با استراتژی</button><button class="red" onclick="closeDemo()">بستن دستی معامله</button><button class="dark" onclick="resetDemo()">ریست حساب Demo</button></div><p class="sub">در حالت Demo هیچ سفارش واقعی ارسال نمی‌شود. در حالت واقعی، دکمه «بستن دستی» فقط بعد از فعال‌سازی امن LIVE قابل استفاده خواهد بود.</p></div>
+<div class="card"><h3>آخرین معاملات</h3><table class="table"><thead><tr><th>سمت</th><th>قیمت</th><th>حجم</th><th>سود/زیان</th><th>علت</th></tr></thead><tbody id="trades"><tr><td colspan="5" class="sub">هنوز معامله‌ای ثبت نشده</td></tr></tbody></table></div>
+<div class="card"><h3>Backtest</h3><div class="kv"><div><span>بازده</span><b id="btRet">-</b></div><div><span>تعداد معاملات</span><b id="btTrades">-</b></div><div><span>سود/زیان</span><b id="btPnl">-</b></div><div><span>سرمایه نهایی</span><b id="btEq">-</b></div></div></div>
+<div class="footer">Tabdeal Pro 2.1 — نسخه آماده تست Demo و آماده‌سازی LIVE</div></div><div id="toast" class="toast"></div>
 <script>
+const $=id=>document.getElementById(id);let lastAnalysis={};
+function money(v){return v==null?'-':Number(v).toLocaleString('en-US',{maximumFractionDigits:8})}
+function msg(t){const x=$('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',2600)}
+async function j(url,opt){const r=await fetch(url,opt);let x;try{x=await r.json()}catch{x={error:'پاسخ نامعتبر'}}if(!r.ok)throw new Error(x.detail||x.error||'خطا در درخواست');return x}
 async function load(){
-  const a=await fetch('/api/analysis').then(r=>r.json());
-  document.getElementById('signal').textContent=a.signal||'HOLD';
-  document.getElementById('confidence').textContent=(a.confidence??'-')+'%';
-  document.getElementById('price').textContent=a.price??'-';
-  document.getElementById('rsi').textContent=a.rsi??'-';
-  document.getElementById('emas').textContent=(a.ema20??'-')+' / '+(a.ema50??'-');
-  const d=await fetch('/api/demo/state').then(r=>r.json());
-  document.getElementById('demo').textContent=JSON.stringify(d,null,2);
+ try{
+  const [s,a,d]=await Promise.all([j('/api/status'),j('/api/analysis'),j('/api/demo/state')]);lastAnalysis=a;
+  $('mode').textContent=s.mode==='DEMO'?'DEMO (آزمایشی)':'LIVE (واقعی)';
+  $('signal').textContent=a.signal||'HOLD';$('signal').className='signal '+((a.signal||'HOLD').toLowerCase());
+  $('reason').textContent=a.reason||a.error||'شرایط کافی برای معامله وجود ندارد';$('price').textContent=money(a.price);$('confidence').textContent=(a.confidence??'-')+'%';$('rsi').textContent=a.rsi??'-';$('emas').textContent=money(a.ema20)+' / '+money(a.ema50);
+  $('position').textContent=d.position==='LONG'?'خرید باز':'بدون معامله';$('equity').textContent=money(d.equity);$('quote').textContent=money(d.quote_balance);$('base').textContent=money(d.base_balance);$('entry').textContent=money(d.entry_price);$('pnl').textContent=money(d.total_pnl);$('tp').textContent=money(d.risk?.take_profit_price);$('sl').textContent=money(d.risk?.stop_loss_price);
+  const rows=(d.trades||[]).slice(-8).reverse().map(t=>`<tr><td>${t.side==='BUY'?'خرید':'فروش'}</td><td>${money(t.price)}</td><td>${money(t.qty)}</td><td>${money(t.pnl||0)}</td><td>${t.reason||'-'}</td></tr>`).join('');$('trades').innerHTML=rows||'<tr><td colspan="5" class="sub">هنوز معامله‌ای ثبت نشده</td></tr>';
+ }catch(e){msg(e.message)}
 }
-async function tick(){
-  const x=await fetch('/api/demo/tick',{method:'POST'}).then(r=>r.json());
-  document.getElementById('demo').textContent=JSON.stringify(x.demo||x,null,2);
-  load();
-}
-async function resetDemo(){
-  await fetch('/api/demo/reset',{method:'POST'});
-  load();
-}
-async function backtest(){
-  const x=await fetch('/api/backtest').then(r=>r.json());
-  document.getElementById('bt').textContent=JSON.stringify(x,null,2);
-}
-load(); backtest();
-setInterval(load,10000);
-</script>
-</body>
-</html>
+async function tick(){try{const x=await j('/api/demo/tick',{method:'POST'});msg(x.demo?.position==='LONG'?'معامله Demo باز است':'تیک Demo اجرا شد');await refreshAll()}catch(e){msg(e.message)}}
+async function saveRisk(){try{const x=await j('/api/demo/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({take_profit_pct:Number($('tpPct').value),stop_loss_pct:Number($('slPct').value)})});msg(x.position==='LONG'?'حد سود/ضرر ذخیره شد':'حدها ذخیره شدند؛ در معامله بعد اعمال می‌شوند');await load()}catch(e){msg(e.message)}}
+async function closeDemo(){try{const x=await j('/api/demo/close',{method:'POST'});msg(x.demo?.position==='FLAT'?'معامله بسته شد':'معامله‌ای برای بستن وجود ندارد');await load()}catch(e){msg(e.message)}}
+async function resetDemo(){if(!confirm('حساب Demo و تاریخچه معاملات ریست شود؟'))return;try{await j('/api/demo/reset',{method:'POST'});msg('حساب Demo ریست شد');await refreshAll()}catch(e){msg(e.message)}}
+async function loadBt(){try{const x=await j('/api/backtest');if(x.ok){$('btRet').textContent=x.return_pct+'%';$('btTrades').textContent=x.trades_count;$('btPnl').textContent=money(x.pnl);$('btEq').textContent=money(x.final_equity)}}catch(e){$('btRet').textContent='نامشخص'}}
+async function refreshAll(){await load();await loadBt()}
+refreshAll();setInterval(load,10000);
+</script></body></html>
