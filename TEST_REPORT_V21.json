@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "checks": [
+    "BUY opens position",
+    "TP closes at target",
+    "SL closes at target",
+    "manual close closes position"
+  ],
+  "pnl": 0.698151
+}
