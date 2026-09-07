@@ -1,8 +1,0 @@
-{
-  "strategy_signal_on_synthetic_uptrend": "HOLD",
-  "demo_position_after_buy": "LONG",
-  "demo_position_after_sell": "FLAT",
-  "demo_total_pnl_after_round_trip": 4.890055,
-  "trade_to_candle_rows": 1,
-  "status": "PASS"
-}
