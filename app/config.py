@@ -15,6 +15,8 @@ class Settings:
     min_confidence = float(os.getenv("MIN_CONFIDENCE", "60"))
     max_daily_loss_pct = float(os.getenv("MAX_DAILY_LOSS_PCT", "3"))
     forward_interval_sec = int(os.getenv("FORWARD_INTERVAL_SEC", "30"))
+    quote_currency = "USDT"
+    display_currency = "USD/USDT"
     live_enabled = os.getenv("LIVE_TRADING_ENABLED", "false").lower() == "true"
 
 settings = Settings()
