@@ -1,17 +1,5 @@
-# Tabdeal Pro v3.2
+# Tabdeal Pro v4.0
+نسخه حرفه‌ای: داشبورد فارسی، نمودار کندلی، ذخیره تاریخچه بازار، استراتژی چند تایم‌فریم 1m/5m/15m، Demo، Forward و Backtest CSV. Live عمداً قفل است.
 
-نسخه یکپارچه داشبورد فارسی با تمرکز روی وضوح معامله و تحلیل بازار.
-
-ویژگی‌ها:
-- قیمت لحظه‌ای و نماد BTC/USDT
-- نمایش کندل‌های 1 دقیقه‌ای روی داشبورد
-- EMA20, EMA50, RSI14, MACD, ATR و Volume Ratio
-- استراتژی چندشاخصی با فیلتر مومنتوم/روند/حجم و جلوگیری از ورود در شرایط بیش‌خرید/بیش‌فروش یا حرکت بیش‌ازحد
-- Demo و Forward Test
-- TP, SL و Trailing Stop
-- بستن دستی
-- محدودیت ضرر روزانه و cooldown
-- Backtest روی داده اخیر و CSV OHLCV
-- Live به‌صورت پیش‌فرض قفل است
-
-ارز مظنه بازار BTC_USDT برابر USDT است. برای نمایش خوانا، سود/زیان در داشبورد با برچسب USD/USDT نشان داده می‌شود؛ این پروژه نرخ تبدیل مستقلی برای USD ارائه نمی‌کند.
+معماری ورود: 15m regime → 5m setup → 1m breakout trigger → RSI/volume → confidence gate.
+خروج: ATR-based SL/TP + trailing + SELL signal + manual close.

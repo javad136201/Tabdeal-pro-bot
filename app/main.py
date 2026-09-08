@@ -1,110 +1,62 @@
+
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
 from .config import settings
-from .tabdeal import recent_trades
-from .data import trades_to_candles, normalize_ohlcv_csv
-from .strategy import analyze
-from .trader import PaperTrader
-from .backtest import run_backtest
-from .forward import ForwardRunner
+from .storage import MarketStore
+from .collector import Collector
+from .strategy import signal
+from .paper import PaperEngine
+from .backtest import run as run_backtest
+from .data import csv_to_ohlcv
 
-app = FastAPI(title="Tabdeal Pro", version="3.2.0")
-
-
-def get_candles(limit=120):
-    raw = recent_trades(settings.symbol, settings.market_limit)
-    return trades_to_candles(raw).tail(limit)
-
-
-def market_analysis():
-    candles = get_candles(120)
-    return analyze(candles, settings.min_confidence)
-
-
-def demo_factory(name):
-    return PaperTrader(name, settings.demo_start_quote, settings.order_quote,
-                       settings.fee_rate, settings.tp_pct, settings.sl_pct,
-                       settings.trailing_pct, settings.cooldown_sec,
-                       settings.max_daily_loss_pct)
-
-
-demo = demo_factory("DEMO")
-forward = demo_factory("FORWARD")
-runner = ForwardRunner(market_analysis, forward, settings.forward_interval_sec)
+app=FastAPI(title="Tabdeal Pro v4",version="4.0.0")
+store=MarketStore(); collector=Collector(store); collector.start()
+demo=PaperEngine("DEMO",settings.starting_usd,settings.order_usd,settings.fee_rate,trailing_pct=settings.trailing_pct,cooldown=settings.cooldown_seconds,max_daily_loss=settings.max_daily_loss_pct)
+forward=PaperEngine("FORWARD",settings.starting_usd,settings.order_usd,settings.fee_rate,trailing_pct=settings.trailing_pct,cooldown=settings.cooldown_seconds,max_daily_loss=settings.max_daily_loss_pct)
 
 @app.get("/")
-def root(): return FileResponse("app/static/index.html")
-
+def root():return FileResponse("app/static/index.html")
 @app.get("/health")
-def health(): return {"ok": True, "version": "3.2.0"}
-
+def health():return {"ok":True,"version":"4.0.0","collector_running":collector.running,"last_error":collector.last_error}
 @app.get("/api/status")
 def status():
-    return {"version":"3.2.0","symbol":settings.symbol,"quote_currency":"USDT",
-            "display_currency":"USD/USDT","mode":settings.mode,
-            "live_enabled":settings.live_enabled,"live_locked":True}
-
+    return {"version":"4.0.0","symbol":settings.symbol,"base_currency":settings.symbol.split("_")[0],"quote_currency":"USDT","display_currency":"USD","mode":settings.mode,"live_locked":True,"live_enabled":False,"stored_1m":store.count(settings.symbol,"1m")}
+def candles_data(limit=500):
+    c=store.load(settings.symbol,"1m",limit)
+    rows=[]
+    for idx,r in c.iterrows():rows.append({"time":idx.isoformat(),"open":float(r.open),"high":float(r.high),"low":float(r.low),"close":float(r.close),"volume":float(r.volume)})
+    return rows
+@app.get("/api/candles")
+def candles():return {"symbol":settings.symbol,"interval":"1m","candles":candles_data(500)}
 @app.get("/api/analysis")
 def analysis():
-    try: return market_analysis()
-    except Exception as e: return {"signal":"HOLD","confidence":0,"error":str(e)}
-
-@app.get("/api/candles")
-def candles():
-    try:
-        c=get_candles(140)
-        rows=[]
-        for idx,row in c.iterrows():
-            rows.append({"time":idx.isoformat(),"open":float(row.open),"high":float(row.high),"low":float(row.low),"close":float(row.close),"volume":float(row.volume)})
-        return {"symbol":settings.symbol,"interval":"1m","quote_currency":"USDT","candles":rows}
-    except Exception as e:
-        return {"symbol":settings.symbol,"interval":"1m","candles":[],"error":str(e)}
-
+    c=store.load(settings.symbol,"1m",3000)
+    return signal(c,settings.min_confidence)
+@app.get("/api/strategy")
+def strategy():return analysis()
 @app.get("/api/demo/state")
-def demo_state(): return demo.snapshot()
+def demo_state():return demo.snapshot()
 @app.post("/api/demo/tick")
 def demo_tick():
-    a=market_analysis(); return {"ok":True,"analysis":a,"state":demo.tick(a)}
+    a=analysis();return {"ok":True,"analysis":a,"state":demo.tick(a)}
 @app.post("/api/demo/manual-close")
-def demo_close(): return demo.manual_close()
+def demo_close():return demo.manual_close()
 @app.post("/api/demo/reset")
-def demo_reset(): demo.reset(); return demo.snapshot()
-@app.post("/api/demo/settings")
-def demo_settings(payload:dict):
-    allowed={k:payload[k] for k in ("order_quote","tp_pct","sl_pct","trailing_pct","cooldown_sec","max_daily_loss_pct") if k in payload}
-    return demo.update_settings(**allowed)
-
+def demo_reset():demo.reset();return demo.snapshot()
 @app.get("/api/forward/state")
-def forward_state(): return {"runner":runner.status(),"state":forward.snapshot()}
+def forward_state():return forward.snapshot()
 @app.post("/api/forward/tick")
-def forward_tick(): return {"ok":True,"result":runner.tick()}
-@app.post("/api/forward/start")
-def forward_start(): runner.start(); return runner.status()
-@app.post("/api/forward/stop")
-def forward_stop(): runner.stop(); return runner.status()
+def forward_tick():
+    a=analysis();return {"ok":True,"analysis":a,"state":forward.tick(a)}
 @app.post("/api/forward/manual-close")
-def forward_close(): return forward.manual_close()
+def forward_close():return forward.manual_close()
 @app.post("/api/forward/reset")
-def forward_reset(): runner.stop(); forward.reset(); return forward.snapshot()
-@app.post("/api/forward/settings")
-def forward_settings(payload:dict):
-    allowed={k:payload[k] for k in ("order_quote","tp_pct","sl_pct","trailing_pct","cooldown_sec","max_daily_loss_pct") if k in payload}
-    return forward.update_settings(**allowed)
-
-@app.get("/api/backtest/recent")
-def backtest_recent():
-    try:
-        c=get_candles(180)
-        return run_backtest(c,settings.demo_start_quote,settings.order_quote,settings.fee_rate,settings.tp_pct,settings.sl_pct,settings.trailing_pct,settings.min_confidence)
-    except Exception as e: return {"ok":False,"error":str(e)}
-
+def forward_reset():forward.reset();return forward.snapshot()
 @app.post("/api/backtest/upload")
-async def backtest_upload(file: UploadFile = File(...)):
+async def backtest_upload(file:UploadFile=File(...)):
     try:
-        c=normalize_ohlcv_csv(await file.read())
-        return run_backtest(c,settings.demo_start_quote,settings.order_quote,settings.fee_rate,settings.tp_pct,settings.sl_pct,settings.trailing_pct,settings.min_confidence)
-    except Exception as e: return {"ok":False,"error":str(e)}
-
+        c=csv_to_ohlcv(await file.read())
+        return run_backtest(c,settings.starting_usd,settings.order_usd,settings.fee_rate,settings.min_confidence)
+    except Exception as e:return {"ok":False,"error":str(e)}
 @app.get("/api/live/preflight")
-def live_preflight():
-    return {"ok":False,"locked":True,"message":"Live در نسخه 3.2 قفل است؛ ابتدا Demo و Forward Test باید اعتبارسنجی شوند."}
+def live_preflight():return {"ok":False,"locked":True,"message":"Live هنوز قفل است؛ این نسخه برای اعتبارسنجی Demo و Forward طراحی شده است."}
