@@ -1,7 +1,0 @@
-{
-  "python_compile": "PASS",
-  "demo_buy_manual_close": "PASS",
-  "backtest_engine": "PASS",
-  "sample_signal": "SELL",
-  "project": "3.0.0"
-}
