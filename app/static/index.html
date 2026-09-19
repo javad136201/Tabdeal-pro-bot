@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tabdeal Pro 5</title>
+<style>
+body{margin:0;background:#0b1119;color:#eef3f8;font-family:Tahoma,Arial,sans-serif}.wrap{max-width:1050px;margin:auto;padding:18px}
+h1{font-size:22px}.sub{color:#8ea1b5;font-size:12px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.card{background:#141f2c;border:1px solid #26384b;border-radius:14px;padding:14px;margin:10px 0}.k{color:#8ea1b5;font-size:12px}.v{font-size:20px;font-weight:700;margin-top:7px}
+.buy{color:#32d583}.sell{color:#ff6b6b}.hold{color:#ffd166}button{border:0;border-radius:9px;padding:10px 15px;margin:4px;cursor:pointer;font-weight:700}
+.start{background:#21a366;color:white}.stop{background:#e45858;color:white}.close{background:#f0a202;color:#111}.reset{background:#708090;color:white}
+input{background:#0d1620;color:white;border:1px solid #30465c;border-radius:7px;padding:9px;width:90px}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:8px;border-bottom:1px solid #26384b;text-align:center}
+@media(max-width:700px){.grid{grid-template-columns:repeat(2,1fr)}}
+</style></head><body><div class="wrap">
+<h1>🤖 Tabdeal Pro 5</h1><div class="sub">دمو خودکار • بازار: <b id="symbol">-</b> • بروزرسانی: <b id="upd">-</b></div>
+<div class="card"><div class="k">سیگنال فعلی</div><div id="sig" class="v hold">HOLD</div><div id="reason" class="sub"></div><div id="bbtag" class="sub"></div></div>
+<div class="grid">
+<div class="card"><div class="k">قیمت لحظه‌ای</div><div id="price" class="v">-</div></div>
+<div class="card"><div class="k">اعتماد</div><div id="conf" class="v">-</div></div>
+<div class="card"><div class="k">RSI</div><div id="rsi" class="v">-</div></div>
+<div class="card"><div class="k">EMA20 / EMA50</div><div id="ema" class="v">-</div></div>
+</div>
+<div class="card"><h3>💰 حساب Demo</h3><div class="grid">
+<div><div class="k">موجودی</div><div id="bal" class="v">-</div></div>
+<div><div class="k">Equity</div><div id="eq" class="v">-</div></div>
+<div><div class="k">سود/زیان تحقق‌یافته</div><div id="rpnl" class="v">-</div></div>
+<div><div class="k">سود/زیان شناور</div><div id="upnl" class="v">-</div></div>
+</div><p id="pos">بدون معامله</p>
+<button class="start" onclick="post('/api/demo/start')">▶ شروع دمو</button>
+<button class="stop" onclick="post('/api/demo/stop')">⏸ توقف</button>
+<button class="close" onclick="post('/api/demo/close')">✖ بستن معامله</button>
+<button class="reset" onclick="post('/api/demo/reset')">↺ ریست</button></div>
+<div class="card"><h3>⚙ تنظیمات Demo</h3>
+<label>حجم معامله USD <input id="trade" type="number" value="50"></label>
+<label>TP % <input id="tp" type="number" step=".1" value="1"></label>
+<label>SL % <input id="sl" type="number" step=".1" value=".6"></label>
+<label>حداقل اعتماد % <input id="minconf" type="number" step="1" value="65"></label>
+<button onclick="save()">ذخیره تنظیمات</button></div>
+<div class="card"><h3>📜 معاملات</h3><table><thead><tr><th>زمان</th><th>ورود</th><th>خروج</th><th>سود/زیان USD</th><th>علت</th></tr></thead><tbody id="trades"></tbody></table></div>
+<div class="card"><h3>🧪 Backtest</h3><div class="sub">یک CSV واقعی شامل open,high,low,close,volume انتخاب کن.</div><input id="csv" type="file" accept=".csv"><button onclick="bt()">اجرای Backtest</button><pre id="btout"></pre></div>
+<div id="err" class="sub"></div>
+</div>
+<script>
+async function j(u,o){let r=await fetch(u,o);let t=await r.text();try{return JSON.parse(t)}catch(e){throw Error(u+' '+r.status+' '+t.slice(0,150))}}
+async function post(u){try{await j(u,{method:'POST'});refresh()}catch(e){err.textContent=e}}
+async function save(){await j('/api/demo/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trade_usd:+trade.value,tp_pct:+tp.value,sl_pct:+sl.value,min_confidence:+minconf.value})});refresh()}
+async function bt(){let f=csv.files[0];if(!f)return;let fd=new FormData();fd.append('file',f);btout.textContent=JSON.stringify(await j('/api/backtest',{method:'POST',body:fd}),null,2)}
+async function refresh(){try{
+let [s,a,d,m]=await Promise.all([j('/api/status'),j('/api/analysis'),j('/api/demo'),j('/api/market')]);
+symbol.textContent=s.symbol;upd.textContent=s.last_update||'-';price.textContent=m.price?m.price.toLocaleString():'-';
+sig.textContent=a.signal||'HOLD';sig.className='v '+(a.signal||'HOLD').toLowerCase();conf.textContent=(a.confidence??'-')+'%';rsi.textContent=a.rsi??'-';
+ema.textContent=(a.ema20?.toFixed?.(2)??'-')+' / '+(a.ema50?.toFixed?.(2)??'-');reason.textContent=a.reason||'';
+bbtag.textContent=a.bb_signal&&a.bb_signal!=='HOLD'?(a.confirmed?'✅ استراتژی دوم (Bollinger/Stochastic) تایید کرد':'⚠️ استراتژی دوم مخالفت کرد → سیگنال خنثی شد'):'';
+bal.textContent='$'+d.balance_usd;eq.textContent='$'+d.equity_usd;rpnl.textContent='$'+d.realized_pnl_usd;upnl.textContent='$'+d.unrealized_pnl_usd;
+pos.textContent=d.position?`🟢 معامله باز | ورود ${d.position.entry.toFixed(2)} | TP ${d.position.tp.toFixed(2)} | SL ${d.position.sl.toFixed(2)}`:'⚪ بدون معامله';
+trades.innerHTML=(d.trades||[]).map(x=>`<tr><td>${x.time}</td><td>${x.entry.toFixed(2)}</td><td>${x.exit.toFixed(2)}</td><td>${x.pnl}</td><td>${x.reason}</td></tr>`).join('');
+err.textContent=s.error||d.last_error||''}catch(e){err.textContent='خطا: '+e.message}}
+refresh();setInterval(refresh,3000);
+</script></body></html>
